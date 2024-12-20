@@ -1,130 +1,35 @@
 import flet as ft
-import sqlite3
-import datetime
+from views.home import home # Importando a view home
+from views.login import login # Importando a view login
+from views.error404 import error404 # Importando a view error404
 
-# Classe principal do aplicativo To-Do.
-class Screen:
-    def __init__(self, page: ft.Page):
-        # Configurações iniciais da página.
-        self.page = page
-        page.window_center
-        self.page.bgcolor = ft.colors.WHITE
-        self.page.window.max_height = 900
-        self.page.max_height = 1000
-        self.page.window_resizable = False
-        self.page.window_always_on_top = True
-        self.page.title = 'PPE - Projeto Primeiro Emprego'
-        self.task = ''
-        self.view = 'all'
+def main(page: ft.Page):
+    
+    page.title = page.route
 
-        # Inicialização do banco de dados SQLite e recuperação das tarefas.
-        self.db_execute("CREATE TABLE IF NOT EXISTS tasks(name, status)")
-        self.results = self.db_execute('SELECT * FROM tasks')
+    WIDTH = page.width
+    HEIGHT = page.height
 
-        # Configuração da página principal.
-        self.main_page()
+    def router(route):
+        """
+            Esta função visão fazer a manipulação das views wm conformidade com a rota definida pelo usuário
+        """
+        page.views.clear() # limpar as views da page
 
-    # Função para executar consultas no banco de dados.
-    def db_execute(self, query, params = []):
-        with sqlite3.connect("database.db") as con:
-            cur = con.cursor()
-            cur.execute(query, params)
-            con.commit()
-            return cur.fetchall()
-
-    # Função para definir o valor da tarefa.
-    def set_value(self, e):
-        self.task = e.control.value
-
-    # Função para adicionar uma nova tarefa.
-    def add(self, e, input_task):
-        name = self.task
-        status = 'incomplete'
-
-        if name:
-            self.db_execute(query='INSERT INTO tasks VALUES(?, ?)', params=[name, status])
-            input_task.value = ''
-            self.results = self.db_execute('SELECT * FROM tasks')
-            self.update_task_list()
-
-    # Função chamada quando uma tarefa é marcada como concluída ou não.
-    def checked(self, e):
-        is_checked = e.control.value
-        label = e.control.label
-
-        if is_checked:
-            self.db_execute('UPDATE tasks SET status = "complete" WHERE name = ?', params=[label])
+        if page.route == '/':
+            page.views.append(home(page, WIDTH, HEIGHT)) # adicionar a view na rota home
+        
+        elif page.route == '/login':
+            page.views.append(login(page, WIDTH, HEIGHT))
+        
         else:
-            self.db_execute('UPDATE tasks SET status = "incomplete" WHERE name = ?', params=[label])
+            page.views.append(error404(page, WIDTH, HEIGHT))
 
-        if self.view == 'all':
-            self.results = self.db_execute('SELECT * FROM tasks')
-        else:
-            self.results = self.db_execute('SELECT * FROM tasks WHERE status = ?', params=[self.view])
-        
-        self.update_task_list()
+        page.title = page.route
+        page.update() #  actualizar a pagina visível no usuário
+    
+    page.on_route_change = router # Evento que escuta a alteração da rota no navegador
+    page.go(page.route) # Evento que vai para a tora especificada
 
-    # Função para criar o contêiner de tarefas.
-    def tasks_container(self):
-        return ft.Divider
-                ft.Container(
-            height=self.page.height * 0.8,
-            
-            content=ft.Column(
-        
-                controls=[
-                    ft.ElevatedButton(text="Teste"),
-                ]
-            )
-        )
-
-    # Função para atualizar a lista de tarefas exibida.
-    def update_task_list(self):
-        tasks = self.tasks_container()
-        self.page.controls.pop()
-        self.page.add(tasks)
-        self.page.update()
-
-    # Função chamada quando as abas de visualização são alteradas.
-    def tabs_changed(self, e):
-        if e.control.selected_index == 0:
-            self.results = self.db_execute('SELECT * FROM tasks')
-            self.view = 'all'
-        elif e.control.selected_index == 1:
-            self.results = self.db_execute('SELECT * FROM tasks WHERE status = "incomplete"')
-            self.view = 'incomplete'
-        elif e.control.selected_index == 2:
-            self.results = self.db_execute('SELECT * FROM tasks WHERE status = "complete"')
-            self.view = 'complete'
-
-        self.update_task_list()
-        
-    # Função para criar a página principal do aplicativo.
-    def main_page(self):
-        input_task = ft.TextField(hint_text="Digite aqui uma tarefa", expand=True, on_change=self.set_value)
-
-        top_bar = ft.Row(
-            controls=[
-                ft.Image(height=100, src='images/logoPrimeiroe.jpg'),
-            ],
-        )
-        ft.Divider(
-            color=ft.colors.AMBER
-        ),
-
-        # tabs = ft.Tabs(
-        #     selected_index=0,
-        #     on_change=self.tabs_changed,
-        #     tabs=[
-        #         ft.Tab(text="Todos"), 
-        #         ft.Tab(text="Em andamento"), 
-        #         ft.Tab(text="Finalizados")
-        #     ],
-        # )
-
-        tasks = self.tasks_container()
-        
-        self.page.add(top_bar,  tasks)
-
-# Inicialização da aplicação.
-ft.app(target = Screen, assets_dir='assets')
+if __name__ == '__main__':
+    ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets')
